@@ -108,6 +108,7 @@ class NormAct(nn.Module):
     '''
     This class defines a normalization and PReLU activation
     '''
+
     def __init__(self, nOut):
         '''
         :param nOut: number of output channels
@@ -258,8 +259,8 @@ class GroupCommSudoRmRf(nn.Module):
             'number.')
         self.lcm = abs(self.enc_kernel_size // 2 * 2 **
                        self.upsampling_depth) // math.gcd(
-                       self.enc_kernel_size // 2,
-                       2 ** self.upsampling_depth)
+            self.enc_kernel_size // 2,
+            2 ** self.upsampling_depth)
 
         # Front end
         self.encoder = nn.Conv1d(in_channels=in_audio_channels,
@@ -302,10 +303,10 @@ class GroupCommSudoRmRf(nn.Module):
         torch.nn.init.xavier_uniform(self.decoder.weight)
         self.mask_nl_class = nn.ReLU()
     # Forward pass
+
     def forward(self, input_wav):
         # Front end
-        x = self.pad_to_appropriate_length(input_wav)
-        x = self.encoder(x)
+        x = self.encoder(input_wav)
 
         # Split paths
         s = x.clone()
@@ -322,23 +323,7 @@ class GroupCommSudoRmRf(nn.Module):
         x = x * s.unsqueeze(1)
         # Back end
         estimated_waveforms = self.decoder(x.view(x.shape[0], -1, x.shape[-1]))
-        return self.remove_trailing_zeros(estimated_waveforms, input_wav)
-
-    def pad_to_appropriate_length(self, x):
-        values_to_pad = int(x.shape[-1]) % self.lcm
-        if values_to_pad:
-            appropriate_shape = x.shape
-            padded_x = torch.zeros(
-                list(appropriate_shape[:-1]) +
-                [appropriate_shape[-1] + self.lcm - values_to_pad],
-                dtype=torch.float32)
-            padded_x[..., :x.shape[-1]] = x
-            return padded_x.to(x.device)
-        return x
-
-    @staticmethod
-    def remove_trailing_zeros(padded_x, initial_x):
-        return padded_x[..., :initial_x.shape[-1]]
+        return estimated_waveforms
 
 
 # transform-average-concatenate (TAC)
@@ -399,7 +384,8 @@ class GC_UConvBlock(nn.Module):
         super(GC_UConvBlock, self).__init__()
 
         self.num_group = num_group
-        self.TAC = TAC(out_channels // num_group, out_channels * 3 // num_group)
+        self.TAC = TAC(out_channels // num_group,
+                       out_channels * 3 // num_group)
         self.UBlock = UConvBlock(out_channels // num_group,
                                  in_channels // num_group,
                                  upsampling_depth=upsampling_depth)
@@ -442,7 +428,3 @@ if __name__ == "__main__":
     estimated_sources = model(dummy_input)
     print(estimated_sources.shape)
     assert estimated_sources.shape[-1] == dummy_input.shape[-1]
-
-
-
-

@@ -100,6 +100,7 @@ class NormAct(nn.Module):
     '''
     This class defines a normalization and PReLU activation
     '''
+
     def __init__(self, nOut):
         '''
         :param nOut: number of output channels
@@ -243,8 +244,8 @@ class SuDORMRF(nn.Module):
         # Appropriate padding is needed for arbitrary lengths
         self.lcm = abs(self.enc_kernel_size // 2 * 2 **
                        self.upsampling_depth) // math.gcd(
-                       self.enc_kernel_size // 2,
-                       2 ** self.upsampling_depth)
+            self.enc_kernel_size // 2,
+            2 ** self.upsampling_depth)
 
         # Front end
         self.encoder = nn.Conv1d(in_channels=1, out_channels=enc_num_basis,
@@ -283,10 +284,10 @@ class SuDORMRF(nn.Module):
         torch.nn.init.xavier_uniform(self.decoder.weight)
         self.mask_nl_class = nn.ReLU()
     # Forward pass
+
     def forward(self, input_wav):
         # Front end
-        x = self.pad_to_appropriate_length(input_wav)
-        x = self.encoder(x)
+        x = self.encoder(input_wav)
 
         # Split paths
         s = x.clone()
@@ -301,23 +302,7 @@ class SuDORMRF(nn.Module):
         x = x * s.unsqueeze(1)
         # Back end
         estimated_waveforms = self.decoder(x.view(x.shape[0], -1, x.shape[-1]))
-        return self.remove_trailing_zeros(estimated_waveforms, input_wav)
-
-    def pad_to_appropriate_length(self, x):
-        values_to_pad = int(x.shape[-1]) % self.lcm
-        if values_to_pad:
-            appropriate_shape = x.shape
-            padded_x = torch.zeros(
-                list(appropriate_shape[:-1]) +
-                [appropriate_shape[-1] + self.lcm - values_to_pad],
-                dtype=torch.float32)
-            padded_x[..., :x.shape[-1]] = x
-            return padded_x.to(x.device)
-        return x
-
-    @staticmethod
-    def remove_trailing_zeros(padded_x, initial_x):
-        return padded_x[..., :initial_x.shape[-1]]
+        return estimated_waveforms
 
 
 if __name__ == "__main__":
@@ -332,7 +317,3 @@ if __name__ == "__main__":
     dummy_input = torch.rand(3, 1, 32079)
     estimated_sources = model(dummy_input)
     print(estimated_sources.shape)
-
-
-
-
