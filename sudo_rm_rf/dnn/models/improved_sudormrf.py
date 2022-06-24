@@ -287,6 +287,45 @@ class SuDORMRF(nn.Module):
 
     def forward(self, input_wav):
         # Front end
+        x = self.pad_to_appropriate_length(input_wav)
+        x = self.encoder(x)
+
+        # Split paths
+        s = x.clone()
+        # Separation module
+        x = self.ln(x)
+        x = self.bottleneck(x)
+        x = self.sm(x)
+
+        x = self.mask_net(x)
+        x = x.view(x.shape[0], self.num_sources, self.enc_num_basis, -1)
+        x = self.mask_nl_class(x)
+        x = x * s.unsqueeze(1)
+        # Back end
+        estimated_waveforms = self.decoder(x.view(x.shape[0], -1, x.shape[-1]))
+        return self.remove_trailing_zeros(estimated_waveforms, input_wav)
+
+    def pad_to_appropriate_length(self, x):
+        values_to_pad = int(x.shape[-1]) % self.lcm
+        if values_to_pad:
+            appropriate_shape = x.shape
+            padded_x = torch.zeros(
+                list(appropriate_shape[:-1]) +
+                [appropriate_shape[-1] + self.lcm - values_to_pad],
+                dtype=torch.float32)
+            padded_x[..., :x.shape[-1]] = x
+            return padded_x.to(x.device)
+        return x
+
+    @staticmethod
+    def remove_trailing_zeros(padded_x, initial_x):
+        return padded_x[..., :initial_x.shape[-1]]
+
+
+class SuDORMRFExp(SuDORMRF):
+
+    def forward(self, input_wav):
+        # Front end
         x = self.encoder(input_wav)
 
         # Split paths
